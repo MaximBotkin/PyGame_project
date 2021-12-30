@@ -122,12 +122,10 @@ def settings_screen(in_game=False):
                         main_screen()
                 if 450 <= event.pos[0] <= 514 and 150 <= event.pos[1] <= 214:
                     music_level -= 0.1
-                    pygame.mixer.music.set_volume(1)
-                    pygame.mixer.music.play(loops=-1)
+                    pygame.mixer.music.set_volume(music_level)
                 if 270 <= event.pos[0] <= 334 and 150 <= event.pos[1] <= 214:
                     music_level += 0.1
-                    pygame.mixer.music.set_volume(1)
-                    pygame.mixer.music.play(loops=-1)
+                    pygame.mixer.music.set_volume(music_level)
         pygame.display.flip()
         clock.tick(FPS)
 
