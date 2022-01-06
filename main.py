@@ -51,7 +51,7 @@ def load_image(name, colorkey=None):
 
 
 # функция загрузки карты уровня
-def load_level(filename="level1.txt"):
+def load_level(filename="level.txt"):
     # передаем имя файла
     filename = "levels/" + filename
     # открываем файл
@@ -68,6 +68,7 @@ def load_level(filename="level1.txt"):
             a.append(elem)
         finish_map.append(a)
     return finish_map
+
 
 load_level()
 
@@ -324,6 +325,8 @@ def generate_level():
                 y_coord = y * 50
             elif finish_map[y][x] == '#':
                 Tile('block', x * 50, y * 50 + 20)
+            elif finish_map[y][x] == '%':
+                Tile('thorn', x * 50, y * 50 + 20)
 
 
 # главный экран
@@ -398,10 +401,10 @@ def main_screen():
         # camera.update(player)
         # обновляем положение всех спрайтов
         # for sprite in all_sprites:
-            # if left:
-                # camera.apply(sprite, 'left')
-            # if right:
-                # camera.apply(sprite, 'right')
+        # if left:
+        # camera.apply(sprite, 'left')
+        # if right:
+        # camera.apply(sprite, 'right')
         all_sprites.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
