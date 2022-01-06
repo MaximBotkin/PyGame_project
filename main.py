@@ -16,6 +16,7 @@ clock = pygame.time.Clock()
 
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
+thorns_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 buttons_group = pygame.sprite.Group()
 
@@ -51,7 +52,7 @@ def load_image(name, colorkey=None):
 
 
 # функция загрузки карты уровня
-def load_level(filename="level.txt"):
+def load_level(filename="level1.txt"):
     # передаем имя файла
     filename = "levels/" + filename
     # открываем файл
@@ -108,7 +109,7 @@ tile_images = {
 
 # Местоположение персонажа относительно экрана
 x_coord = 50
-y_coord = 230
+y_coord = 100
 width_of_player = 61  # Размер спрайта в писелях ( ширина )
 height_of_player = 70  # Размер спрайта в пикселях ( высота )
 speed = 5
@@ -116,6 +117,7 @@ speed = 5
 # Ставим изначальное значение прыжка и бега на False
 jump = False
 jump_height = 10
+is_flying = False
 
 left = False
 right = False
@@ -170,6 +172,9 @@ def start_screen():
                     settings_screen()
                 elif 130 <= event.pos[0] <= 630 and 200 <= event.pos[1] <= 575:
                     main_screen()
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_ESCAPE]:
+            settings_screen()
         # обновляем экран
         pygame.display.flip()
         clock.tick(FPS)
@@ -231,7 +236,48 @@ def settings_screen(in_game=False):
                     sound_effects_level -= 0.1
                 if 270 <= event.pos[0] <= 334 and 350 <= event.pos[1] <= 414:
                     sound_effects_level += 0.1
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_ESCAPE]:
+            if in_game:
+                main_screen()
+            else:
+                start_screen()
         # обновляем экран
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def lose_screen():
+    global x_coord, y_coord, jump, jump_height
+    fon = pygame.transform.scale(load_image("game_over.png"), (width, height))
+    screen.blit(fon, (0, 0))
+    x_coord = 100
+    y_coord = 150
+    jump = False
+    jump_height = 10
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN:
+                main_screen()
+                return
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def win_screen():
+    fon = pygame.transform.scale(load_image("victory.png"), (width, height))
+    screen.blit(fon, (0, 0))
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN:
+                main_screen()
+                return
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -241,6 +287,14 @@ class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, x, y):
         super().__init__(tiles_group, all_sprites)
         self.image = tile_images[tile_type]
+        self.rect = self.image.get_rect().move(x, y)
+
+
+# класс препятствий
+class Thorns(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__(thorns_group, all_sprites)
+        self.image = tile_images['thorn']
         self.rect = self.image.get_rect().move(x, y)
 
 
@@ -269,47 +323,71 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(x_coord, y_coord)
 
     # функция отвечающая за передвижения персонажа
-    def update(self, x_coord, y_coord):
-        global animation
-        # определяем скорость изменения анимаций (зависит от частоты смены кадров)
-        if animation + 1 >= 60:
-            animation = 0
-        if left:
-            # анимация при беге налево
-            self.image = leftwalking[animation // 10]
-            self.rect = self.image.get_rect().move(x_coord, y_coord)
-            animation += 1
-        elif right:
-            # анимация при беге направо
-            self.image = rightwalking[animation // 10]
-            self.rect = self.image.get_rect().move(x_coord, y_coord)
-            animation += 1
-        elif jump:
-            # анимация прыжка
-            self.image = fly[animation // 10]
-            self.rect = self.image.get_rect().move(x_coord, y_coord)
-            animation += 1
-        else:
-            # иначе изначальное положение персонажа
-            self.image = defoltplace
-            self.rect = self.image.get_rect().move(x_coord, y_coord)
+    def update(self, x_coord, y_coord, jump):
+        global animation, left, right, jump_height
+        if pygame.sprite.spritecollideany(self, thorns_group):
+            self.kill()
+            lose_screen()
+        if pygame.sprite.spritecollideany(self, tiles_group) is None and not jump:
+            if self.rect.top > 600:
+                self.kill()
+                lose_screen()
+            else:
+                is_flying = True
+                self.image = fly[0]
+                self.rect.top += (jump_height ** 2) / 2
+                jump_height -= 1
+        elif pygame.sprite.spritecollideany(self, tiles_group) or jump:
+            # определяем скорость изменения анимаций (зависит от частоты смены кадров)
+            if animation + 1 >= 60:
+                animation = 0
+            if left:
+                # анимация при беге налево
+                self.image = leftwalking[animation // 10]
+                self.rect = self.image.get_rect().move(x_coord, y_coord)
+                animation += 1
+            elif right:
+                # анимация при беге направо
+                self.image = rightwalking[animation // 10]
+                self.rect = self.image.get_rect().move(x_coord, y_coord)
+                animation += 1
+            elif jump:
+                # анимация прыжка
+                self.image = fly[0]
+                self.rect = self.image.get_rect().move(x_coord, y_coord)
+                animation += 1
+            else:
+                # иначе изначальное положение персонажа
+                self.image = defoltplace
+                self.rect = self.image.get_rect().move(x_coord, y_coord)
+        self.pre_xcoord = x_coord
+        self.pre_ycoord = y_coord
 
 
+# класс камеры
 class Camera(object):
-    def __init__(self):
-        self.dx = 0
+    def __init__(self, camera, width, height):
+        self.camera = camera
+        self.rect = pygame.Rect(0, 0, width, height)
 
-    def apply(self, obj, way):
-        if way == 'left':
-            obj.rect.x -= self.dx
-        elif way == 'right':
-            obj.rect.x += self.dx
+    def apply(self, obj):
+        return obj.rect.move(self.rect.topleft)
 
-    def update(self, target, way):
-        if way == 'left':
-            self.dx = -(target.rect.x + target.rect.w // 2 - width // 2)
-        elif way == 'right':
-            self.dx = (target.rect.x + target.rect.w // 2 - width // 2)
+    def update(self, target):
+        self.rect = self.camera(self.rect, target.rect)
+
+# функция конфигурации камеры
+def camera_configure(camera, obj):
+    width_of_obj, height_of_obj, _, _ = obj
+    _, _, w, h = camera
+    width_of_obj, height_of_obj = -width_of_obj + 800 / 2, -height_of_obj + 600 / 2
+
+    width_of_obj = min(0, width_of_obj)
+    width_of_obj = max(-(camera.width - 800), width_of_obj)
+    height_of_obj = max(-(camera.height - 600), height_of_obj)
+    height_of_obj = min(0, height_of_obj)
+
+    return pygame.Rect(width_of_obj, height_of_obj, w, h)
 
 
 # фцнкция генерации уровня с .txt файла
@@ -326,7 +404,7 @@ def generate_level():
             elif finish_map[y][x] == '#':
                 Tile('block', x * 50, y * 50 + 20)
             elif finish_map[y][x] == '%':
-                Tile('thorn', x * 50, y * 50 + 20)
+                Thorns(x * 50, y * 50 + 40)
 
 
 # главный экран
@@ -341,15 +419,25 @@ def main_screen():
     buttons_class = Buttons()
     buttons_class.draw(screen)
 
+    # переменные для игрока
+    x_coord = 50
+    y_coord = 100
+    speed = 5
+    jump = False
+    jump_height = 10
+    is_flying = False
+    left = False
+    right = False
+    animation = 0
+
     # выводим на экран игрока
     player = Player(x_coord, y_coord)
 
+    # инициализируем камеру
+    camera = Camera(camera_configure, 2400, 600)
+
     # выводим спрайты
     generate_level()
-
-    # создаем камеру
-    # finish_map = load_level()
-    # camera = Camera()
 
     # цикл главного экрана
     while True:
@@ -360,10 +448,14 @@ def main_screen():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 # проверяем, куда нажал пользователь
                 if 750 <= event.pos[0] <= 800 and 0 <= event.pos[1] <= 50:
+                    player.kill()
                     settings_screen(True)
                 elif 0 <= event.pos[0] <= 50 and 0 <= event.pos[1] <= 50:
+                    player.kill()
                     start_screen()
         keys = pygame.key.get_pressed()
+        if keys[pygame.K_ESCAPE]:
+            settings_screen(True)
         if keys[pygame.K_LEFT] and x_coord > 5:
             # бег при нажатии кнопки влево
             x_coord -= speed
@@ -381,31 +473,30 @@ def main_screen():
         if not jump:
             # если персонаж не в прыжке, возможность прыжка кнопкой вверх
             if keys[pygame.K_UP]:
-                jump = True
-        else:
-            # скорость падения, высота прыжка и момент остановки прыжка
-            if jump_height >= -10:
-                if jump_height < 0:
-                    y_coord += (jump_height ** 2) / 2
+                if pygame.sprite.spritecollideany(player, tiles_group):
+                    jump = True
                 else:
-                    y_coord -= (jump_height ** 2) / 2
+                    jump = False
+        if jump:
+            # скорость падения, высота прыжка и момент остановки прыжка
+            if jump_height >= 0:
+                y_coord -= (jump_height ** 2) / 2
                 jump_height -= 1
-            else:
-                jump = False
-                jump_height = 10
+            if jump_height < 0:
+                if pygame.sprite.spritecollideany(player, tiles_group):
+                    y_coord = pygame.sprite.spritecollideany(player, tiles_group).rect[1] - width_of_player - 6
+                    jump = False
+                    jump_height = 10
+                else:
+                    y_coord += (jump_height ** 2) / 2
+                    jump_height -= 1
         # обновляем экран
         screen.blit(fon_image, (0, 0))
+        all_sprites.update(x_coord, y_coord, jump)
+        camera.update(player)
+        for sprite in all_sprites:
+            screen.blit(sprite.image, camera.apply(sprite))
         buttons_class.draw(screen)
-        all_sprites.update(x_coord, y_coord)
-        # изменяем ракурс камеры
-        # camera.update(player)
-        # обновляем положение всех спрайтов
-        # for sprite in all_sprites:
-        # if left:
-        # camera.apply(sprite, 'left')
-        # if right:
-        # camera.apply(sprite, 'right')
-        all_sprites.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
 
