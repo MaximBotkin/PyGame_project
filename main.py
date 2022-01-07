@@ -336,6 +336,11 @@ class Player(pygame.sprite.Sprite):
         if pygame.sprite.spritecollideany(self, thorns_group):
             self.kill()
             lose_screen()
+        # если игрок провалится, то также появляется экран поражения
+        if y_coord > 600:
+            pass
+            # self.kill()
+            # lose_screen()
         # игрок падает, не столкнётся с блоком
         if pygame.sprite.spritecollideany(self, tiles_group) is None and not jump:
             is_flying = True
@@ -409,9 +414,9 @@ def generate_level():
                 x_coord = x * 50
                 y_coord = y * 50
             elif finish_map[y][x] == '#':
-                Tile('block', x * 50, y * 50 + 20)
+                Tile('block', x * 50, y * 20)
             elif finish_map[y][x] == '%':
-                Thorns(x * 50, y * 50 + 40)
+                Thorns(x * 50, y * 20 - 10)
 
 
 # главный экран
@@ -442,7 +447,7 @@ def main_screen():
     player = Player(x_coord, y_coord)
 
     # инициализируем камеру
-    camera = Camera(camera_configure, 2400, 600)
+    camera = Camera(camera_configure, 1600, 600)
 
     # выводим спрайты
     generate_level()
