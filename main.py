@@ -117,7 +117,7 @@ speed = 5
 # Ставим изначальное значение прыжка и бега на False
 jump = False
 jump_height = 10
-is_flying = False
+is_flying = True
 
 left = False
 right = False
@@ -247,10 +247,13 @@ def settings_screen(in_game=False):
         clock.tick(FPS)
 
 
+# функция экрана поражения
 def lose_screen():
     global x_coord, y_coord, jump, jump_height
+    # загружаем фон
     fon = pygame.transform.scale(load_image("game_over.png"), (width, height))
     screen.blit(fon, (0, 0))
+    # меняем координаты игрока на дефолтные
     x_coord = 100
     y_coord = 150
     jump = False
@@ -261,13 +264,16 @@ def lose_screen():
                 terminate()
             elif event.type == pygame.KEYDOWN or \
                     event.type == pygame.MOUSEBUTTONDOWN:
+                # возвращаем игрока на главный экран
                 main_screen()
                 return
         pygame.display.flip()
         clock.tick(FPS)
 
 
+# функция экрана победы
 def win_screen():
+    # загружаем фон
     fon = pygame.transform.scale(load_image("victory.png"), (width, height))
     screen.blit(fon, (0, 0))
     while True:
@@ -276,6 +282,7 @@ def win_screen():
                 terminate()
             elif event.type == pygame.KEYDOWN or \
                     event.type == pygame.MOUSEBUTTONDOWN:
+                # возвращаем игрока на главный экран
                 main_screen()
                 return
         pygame.display.flip()
@@ -324,20 +331,19 @@ class Player(pygame.sprite.Sprite):
 
     # функция отвечающая за передвижения персонажа
     def update(self, x_coord, y_coord, jump):
-        global animation, left, right, jump_height
+        global animation, left, right, jump_height, is_flying
+        # если игрок сталкивается с шипами, то появляется экран поражения
         if pygame.sprite.spritecollideany(self, thorns_group):
             self.kill()
             lose_screen()
+        # игрок падает, не столкнётся с блоком
         if pygame.sprite.spritecollideany(self, tiles_group) is None and not jump:
-            if self.rect.top > 600:
-                self.kill()
-                lose_screen()
-            else:
-                is_flying = True
-                self.image = fly[0]
-                self.rect.top += (jump_height ** 2) / 2
-                jump_height -= 1
-        elif pygame.sprite.spritecollideany(self, tiles_group) or jump:
+            is_flying = True
+        # игрок летит с анимацией падения
+        if is_flying:
+            self.image = fly[0]
+            self.rect = self.image.get_rect().move(x_coord, y_coord)
+        if pygame.sprite.spritecollideany(self, tiles_group) or jump:
             # определяем скорость изменения анимаций (зависит от частоты смены кадров)
             if animation + 1 >= 60:
                 animation = 0
@@ -360,8 +366,6 @@ class Player(pygame.sprite.Sprite):
                 # иначе изначальное положение персонажа
                 self.image = defoltplace
                 self.rect = self.image.get_rect().move(x_coord, y_coord)
-        self.pre_xcoord = x_coord
-        self.pre_ycoord = y_coord
 
 
 # класс камеры
@@ -370,11 +374,14 @@ class Camera(object):
         self.camera = camera
         self.rect = pygame.Rect(0, 0, width, height)
 
+    # обновляем каждый спрайт
     def apply(self, obj):
         return obj.rect.move(self.rect.topleft)
 
+    # обновляем по отношению к игроку
     def update(self, target):
         self.rect = self.camera(self.rect, target.rect)
+
 
 # функция конфигурации камеры
 def camera_configure(camera, obj):
@@ -409,7 +416,8 @@ def generate_level():
 
 # главный экран
 def main_screen():
-    global jump, jump_height, x_coord, y_coord, left, right, animation
+    # глобализируем переменные
+    global jump, jump_height, x_coord, y_coord, left, right, animation, is_flying
 
     # загружаем фон
     fon_image = pygame.transform.scale(load_image('main_fon.png'), (width, height))
@@ -425,7 +433,7 @@ def main_screen():
     speed = 5
     jump = False
     jump_height = 10
-    is_flying = False
+    is_flying = True
     left = False
     right = False
     animation = 0
@@ -455,6 +463,7 @@ def main_screen():
                     start_screen()
         keys = pygame.key.get_pressed()
         if keys[pygame.K_ESCAPE]:
+            # выход в настройки клавишей ESCAPE
             settings_screen(True)
         if keys[pygame.K_LEFT] and x_coord > 5:
             # бег при нажатии кнопки влево
@@ -467,6 +476,7 @@ def main_screen():
             left = False
             right = True
         else:
+            # игрок стоит на месте
             left = False
             right = False
             animation = 0
@@ -484,18 +494,33 @@ def main_screen():
                 jump_height -= 1
             if jump_height < 0:
                 if pygame.sprite.spritecollideany(player, tiles_group):
+                    # игрок столкнулся с другим спрайтом
                     y_coord = pygame.sprite.spritecollideany(player, tiles_group).rect[1] - width_of_player - 6
                     jump = False
                     jump_height = 10
                 else:
                     y_coord += (jump_height ** 2) / 2
                     jump_height -= 1
+        # падение игрока
+        if is_flying:
+            if pygame.sprite.spritecollideany(player, tiles_group):
+                # если столкнулся с землёй, то оставляем его там
+                y_coord = pygame.sprite.spritecollideany(player, tiles_group).rect[1] - width_of_player - 6
+                jump_height = 10
+                is_flying = False
+            else:
+                # в противном случае игрок летит дальше
+                y_coord += (jump_height ** 2) / 2
+                jump_height -= 1
+                is_flying = True
         # обновляем экран
         screen.blit(fon_image, (0, 0))
         all_sprites.update(x_coord, y_coord, jump)
+        # обновляем камеру
         camera.update(player)
         for sprite in all_sprites:
             screen.blit(sprite.image, camera.apply(sprite))
+        # рисуем кнопки
         buttons_class.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
