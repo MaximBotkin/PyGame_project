@@ -21,6 +21,7 @@ thorns_group = pygame.sprite.Group()
 water_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 buttons_group = pygame.sprite.Group()
+finish_group = pygame.sprite.Group()
 
 # вводим переменные громкости музыки и звуковых эффектов
 music_level = 0.5
@@ -79,7 +80,8 @@ load_level()
 buttons = {'home_btn': load_image("home_button.png"), 'minus_btn': load_image("minus.png"),
            'plus_btn': load_image("plus.png"), 'mute_btn': load_image("mute.png"),
            'settings_btn': load_image("settings_button.png"), 'unmute_btn': load_image("unmute.png"),
-           'play_btn': load_image("play_button.png"), 'return_btn': load_image("return_button.png")}
+           'play_btn': load_image("play_button.png"), 'return_btn': load_image("return_button.png"),
+           'next_btn': load_image("next.png"), 'previous_btn': load_image("return_button.png")}
 
 # создание списков для сменяющихся картинок между собой по очереди
 rightwalking = [pygame.image.load('data/sprites/right_1.png'),
@@ -109,8 +111,7 @@ tile_images = {
     'block': load_image("block.png"),
     'clearblock': load_image("clear_block.png"),
     'waterblock': load_image("water_block.png"),
-    'bird': load_image("bird.png"),
-    'cloud': load_image("cloud.png")
+    'finish_flag': load_image("finish.png"),
 }
 
 # Местоположение персонажа относительно экрана
@@ -236,6 +237,8 @@ def lose_screen():
     global x_coord, y_coord, jump, jump_height
     # загружаем фон
     fon = pygame.transform.scale(load_image("game_over.png"), (width, height))
+    screen.blit(buttons['previous_btn'], (210, 490))
+    screen.blit(buttons['home_btn'], (550, 490))
     screen.blit(fon, (0, 0))
     # меняем координаты игрока на дефолтные
     x_coord = 100
@@ -246,11 +249,15 @@ def lose_screen():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
-                # возвращаем игрока на главный экран
-                main_screen()
-                return
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                # При нажатии кнокпки повтор, уровень загрузится заново
+                if 210 <= event.pos[0] <= 260 and 490 <= event.pos[1] <= 540:
+                    main_screen()
+                    return
+                # При нажатии кнопки домой, появиться стартовый экран
+                elif 550 <= event.pos[0] <= 600 and 490 <= event.pos[1] <= 540:
+                    start_screen()
+                    return
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -259,16 +266,21 @@ def lose_screen():
 def win_screen():
     # загружаем фон
     fon = pygame.transform.scale(load_image("victory.png"), (width, height))
+    screen.blit(buttons['next_btn'], (515, 430))
+    screen.blit(buttons['previous_btn'], (215, 430))
     screen.blit(fon, (0, 0))
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
-                # возвращаем игрока на главный экран
-                main_screen()
-                return
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                # При нажатии кнокпки повтор, уровень загрузится заново
+                if 215 <= event.pos[0] <= 265 and 430 <= event.pos[1] <= 480:
+                    main_screen()
+                    return
+                # При нажатии кнопки далее загрузится слелующий уровень
+                # elif 490 <= event.pos[0] <= 540 and 490 <= event.pos[1] <= 540:
+                # next_level()
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -289,10 +301,18 @@ class Thorns(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(x, y)
 
 
+# класс лавы
 class Water(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__(thorns_group, all_sprites)
         self.image = tile_images['waterblock']
+        self.rect = self.image.get_rect().move(x, y)
+
+
+class Finish(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__(finish_group, all_sprites)
+        self.image = tile_images['finish_flag']
         self.rect = self.image.get_rect().move(x, y)
 
 
@@ -327,9 +347,14 @@ class Player(pygame.sprite.Sprite):
         if pygame.sprite.spritecollideany(self, thorns_group):
             self.kill()
             lose_screen()
+        # если игрок сталкивается с лавой, то появляется экран поражения
         if pygame.sprite.spritecollideany(self, water_group):
             self.kill()
             lose_screen()
+        # если игрок сталкивается со звездой, то появляется экран победы
+        if pygame.sprite.spritecollideany(self, finish_group):
+            self.kill()
+            win_screen()
         # если игрок провалится, то также появляется экран поражения
         if y_coord > 600:
             pass
@@ -410,11 +435,13 @@ def generate_level():
             elif finish_map[y][x] == '#':
                 Tile('block', x * 50, y * 20)
             elif finish_map[y][x] == '%':
-                Thorns(x * 50, y * 20 - 10)
+                Thorns(x * 50, y * 20 - 11)
             elif finish_map[y][x] == '*':
                 Tile('clearblock', x * 50, y * 20)
             elif finish_map[y][x] == '$':
                 Water(x * 50, y * 20)
+            elif finish_map[y][x] == '!':
+                Finish(x * 50, y * 20 - 35)
 
 
 # главный экран
@@ -469,7 +496,6 @@ def main_screen():
             # выход в настройки клавишей ESCAPE
             settings_screen(True)
         if keys[pygame.K_LEFT] and x_coord > 5:
-            # бег при нажатии кнопки влево
             x_coord -= speed
             left = True
             right = False
