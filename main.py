@@ -9,6 +9,7 @@ pygame.init()
 width, height = 800, 600
 size = width, height
 screen = pygame.display.set_mode(size)
+pygame.display.set_caption('Bit Adventure')
 
 # инициалищируем pygame.Clock() и ставим 60 FPS
 FPS = 60
@@ -17,6 +18,7 @@ clock = pygame.time.Clock()
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 thorns_group = pygame.sprite.Group()
+water_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 buttons_group = pygame.sprite.Group()
 
@@ -52,7 +54,7 @@ def load_image(name, colorkey=None):
 
 
 # функция загрузки карты уровня
-def load_level(filename="level1.txt"):
+def load_level(filename="level.txt"):
     # передаем имя файла
     filename = "levels/" + filename
     # открываем файл
@@ -103,8 +105,12 @@ defoltplace = pygame.image.load('data/sprites/idle.png')
 level_map = load_level()
 # загружаем изображения самой игры
 tile_images = {
-    'thorn': load_image("thorns.png"),
+    'thorn': load_image("thorns1.png"),
     'block': load_image("block.png"),
+    'clearblock': load_image("clear_block.png"),
+    'waterblock': load_image("water_block.png"),
+    'bird': load_image("bird.png"),
+    'cloud': load_image("cloud.png")
 }
 
 # Местоположение персонажа относительно экрана
@@ -134,27 +140,13 @@ def terminate():
 
 # стартовый экран, из которого можно перейти в настройки и саму игру
 def start_screen():
-    # список строк текста
-    intro_text = ['Pygame Project', 'Перед началом игры ознакомьтесь с файлом read_before_play.txt,',
-                  'который лежит в папке с вашей программой.']
-
     # фон стартового экрана
     fon = pygame.transform.scale(load_image('start_fon.png'), (width, height))
     screen.blit(fon, (0, 0))
 
-    # выводим все строки
-    font_for_title = pygame.font.Font(None, 60)
-    string_rendered = font_for_title.render(intro_text[0], 1, pygame.Color((127, 0, 255)))
-    screen.blit(string_rendered, (242, 50))
-    font_about = pygame.font.Font(None, 30)
-    string_about1 = font_about.render(intro_text[1], 1, pygame.Color((127, 0, 255)))
-    screen.blit(string_about1, (20, 150))
-    string_about2 = font_about.render(intro_text[2], 1, pygame.Color((127, 0, 255)))
-    screen.blit(string_about2, (20, 175))
-
     # выводим кнопки настроек и играть на экран
     screen.blit(buttons['settings_btn'], (750, 0))
-    screen.blit(buttons['play_btn'], (130, 200))
+    screen.blit(buttons['play_btn'], (170, 240))
 
     # цикл стартового экрана
     while True:
@@ -186,27 +178,19 @@ def settings_screen(in_game=False):
     global music_level, sound_effects_level
 
     # загружаем задний фон
-    fon = pygame.transform.scale(load_image('settings_fon.jpg'), (width, height))
+    fon = pygame.transform.scale(load_image('settings_fon.png'), (width, height))
     screen.blit(fon, (0, 0))
 
     # выводим все кнопки
     screen.blit(buttons['home_btn'], (748, 2))
-    screen.blit(buttons['minus_btn'], (450, 150))
-    screen.blit(buttons['plus_btn'], (270, 150))
-    screen.blit(buttons['minus_btn'], (450, 350))
-    screen.blit(buttons['plus_btn'], (270, 350))
+    screen.blit(buttons['minus_btn'], (450, 210))
+    screen.blit(buttons['plus_btn'], (270, 210))
+    screen.blit(buttons['minus_btn'], (450, 345))
+    screen.blit(buttons['plus_btn'], (270, 345))
     # если пользователь, вышел из игры в настройки,
     # то есть возможность вернуться назад с помозью одной кнопки "return"
     if in_game:
         screen.blit(buttons['return_btn'], (2, 2))
-
-    # выводим строки текста
-    text = ['Громкость музыки', 'Громкость звуковых эффектов']
-    font_for_title = pygame.font.Font(None, 50)
-    string_1 = font_for_title.render(text[0], 1, pygame.Color((127, 0, 255)))
-    screen.blit(string_1, (242, 100))
-    string_2 = font_for_title.render(text[1], 1, pygame.Color((127, 0, 255)))
-    screen.blit(string_2, (130, 300))
 
     # цикл экрана настроек
     while True:
@@ -305,6 +289,13 @@ class Thorns(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(x, y)
 
 
+class Water(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__(thorns_group, all_sprites)
+        self.image = tile_images['waterblock']
+        self.rect = self.image.get_rect().move(x, y)
+
+
 # класс спрайтов кнопок на главном экране
 class Buttons(pygame.sprite.Sprite):
     # инициализируем
@@ -334,6 +325,9 @@ class Player(pygame.sprite.Sprite):
         global animation, left, right, jump_height, is_flying
         # если игрок сталкивается с шипами, то появляется экран поражения
         if pygame.sprite.spritecollideany(self, thorns_group):
+            self.kill()
+            lose_screen()
+        if pygame.sprite.spritecollideany(self, water_group):
             self.kill()
             lose_screen()
         # если игрок провалится, то также появляется экран поражения
@@ -417,6 +411,10 @@ def generate_level():
                 Tile('block', x * 50, y * 20)
             elif finish_map[y][x] == '%':
                 Thorns(x * 50, y * 20 - 10)
+            elif finish_map[y][x] == '*':
+                Tile('clearblock', x * 50, y * 20)
+            elif finish_map[y][x] == '$':
+                Water(x * 50, y * 20)
 
 
 # главный экран
@@ -475,7 +473,7 @@ def main_screen():
             x_coord -= speed
             left = True
             right = False
-        elif keys[pygame.K_RIGHT] and x_coord < 800 - width_of_player - 5:
+        elif keys[pygame.K_RIGHT] and x_coord < 1920 - width_of_player - 5:
             # бег при нажатии кнопки вправо
             x_coord += speed
             left = False
