@@ -105,7 +105,7 @@ defoltplace = pygame.image.load('data/sprites/idle.png')
 level_map = load_level()
 # загружаем изображения самой игры
 tile_images = {
-    'thorn': load_image("thorns1.png"),
+    'thorn': load_image("thorns.png"),
     'block': load_image("block.png"),
     'clearblock': load_image("clear_block.png"),
     'waterblock': load_image("water_block.png"),
@@ -473,7 +473,7 @@ def main_screen():
             x_coord -= speed
             left = True
             right = False
-        elif keys[pygame.K_RIGHT] and x_coord < 1920 - width_of_player - 5:
+        elif keys[pygame.K_RIGHT] and x_coord < 1600 - width_of_player - 5:
             # бег при нажатии кнопки вправо
             x_coord += speed
             left = False
