@@ -11,7 +11,7 @@ size = width, height
 screen = pygame.display.set_mode(size)
 pygame.display.set_caption('Bit Adventure')
 
-# инициалищируем pygame.Clock() и ставим 60 FPS
+# инициализируем pygame.Clock() и ставим 60 FPS
 FPS = 60
 clock = pygame.time.Clock()
 
@@ -24,12 +24,22 @@ buttons_group = pygame.sprite.Group()
 finish_group = pygame.sprite.Group()
 
 # вводим переменные громкости музыки и звуковых эффектов
-music_level = 0.5
+music_level = 0.1
 sound_effects_level = 0.5
+
 # играем непрерывную музыку
 pygame.mixer.music.load('data/sound_effects/music.wav')
 pygame.mixer.music.set_volume(music_level)
 pygame.mixer.music.play(loops=-1)
+
+# звук падения
+drop = pygame.mixer.Sound("data/sound_effects/drop.wav")
+# звук нажатия кнопки
+menu_up = pygame.mixer.Sound("data/sound_effects/menu-up.wav")
+# звук победы
+win_sound = pygame.mixer.Sound("data/sound_effects/win_music.wav")
+# звук поражения
+lose_sound = pygame.mixer.Sound("data/sound_effects/lose_music.wav")
 
 
 # функция загрузки изображения
@@ -117,7 +127,7 @@ tile_images = {
 # Местоположение персонажа относительно экрана
 x_coord = 50
 y_coord = 100
-width_of_player = 61  # Размер спрайта в писелях ( ширина )
+width_of_player = 61  # Размер спрайта в пикселях ( ширина )
 height_of_player = 70  # Размер спрайта в пикселях ( высота )
 speed = 5
 
@@ -152,7 +162,6 @@ def start_screen():
     # цикл стартового экрана
     while True:
         for event in pygame.event.get():
-            coord = pygame.mouse.get_pos()
             # screen.blit(cursor_img, coord)
             if event.type == pygame.QUIT:
                 # выходим из игры, если пользователь закрыл программу
@@ -162,8 +171,14 @@ def start_screen():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 # проверяем, куда нажал пользователь
                 if 750 <= event.pos[0] <= 800 and 0 <= event.pos[1] <= 50:
+                    # проигрываем звук нажатия кнопки
+                    menu_up.set_volume(sound_effects_level)
+                    menu_up.play()
                     settings_screen()
                 elif 130 <= event.pos[0] <= 630 and 200 <= event.pos[1] <= 575:
+                    # проигрываем звук нажатия кнопки
+                    menu_up.set_volume(sound_effects_level)
+                    menu_up.play()
                     main_screen()
         keys = pygame.key.get_pressed()
         if keys[pygame.K_ESCAPE]:
@@ -189,7 +204,7 @@ def settings_screen(in_game=False):
     screen.blit(buttons['minus_btn'], (450, 345))
     screen.blit(buttons['plus_btn'], (270, 345))
     # если пользователь, вышел из игры в настройки,
-    # то есть возможность вернуться назад с помозью одной кнопки "return"
+    # то есть возможность вернуться назад с помощью одной кнопки "return"
     if in_game:
         screen.blit(buttons['return_btn'], (2, 2))
 
@@ -199,28 +214,35 @@ def settings_screen(in_game=False):
             if event.type == pygame.QUIT:
                 # выходим из игры, если пользователь закрыл программу
                 terminate()
-            if event.type == pygame.MOUSEMOTION:
-                pass
-                # cursor.rect.topleft = event.pos
             if event.type == pygame.MOUSEBUTTONDOWN:
                 # проверяем, куда нажал пользователь
                 if 748 <= event.pos[0] <= 800 and 0 <= event.pos[1] <= 50:
+                    # проигрываем звук нажатия кнопки
+                    menu_up.set_volume(sound_effects_level)
+                    menu_up.play()
                     start_screen()
                 if in_game:
                     if 0 <= event.pos[0] <= 50 and 0 <= event.pos[1] <= 50:
+                        # проигрываем звук нажатия кнопки
+                        menu_up.set_volume(sound_effects_level)
+                        menu_up.play()
                         main_screen()
                 # если это одна из кнопок изменения звука,
                 # то изменяем переменные music_level или sound_effects_level соответственно нажатой кнопки
-                if 450 <= event.pos[0] <= 514 and 150 <= event.pos[1] <= 214:
-                    music_level -= 0.1
+                if 450 <= event.pos[0] <= 500 and 210 <= event.pos[1] <= 260:
+                    if music_level >= 0.1:
+                        music_level -= 0.1
                     pygame.mixer.music.set_volume(music_level)
-                if 270 <= event.pos[0] <= 334 and 150 <= event.pos[1] <= 214:
-                    music_level += 0.1
+                if 270 <= event.pos[0] <= 320 and 210 <= event.pos[1] <= 260:
+                    if music_level < 1:
+                        music_level += 0.1
                     pygame.mixer.music.set_volume(music_level)
-                if 450 <= event.pos[0] <= 514 and 350 <= event.pos[1] <= 414:
-                    sound_effects_level -= 0.1
-                if 270 <= event.pos[0] <= 334 and 350 <= event.pos[1] <= 414:
-                    sound_effects_level += 0.1
+                if 450 <= event.pos[0] <= 500 and 345 <= event.pos[1] <= 395:
+                    if sound_effects_level >= 0.1:
+                        sound_effects_level -= 0.1
+                if 270 <= event.pos[0] <= 320 and 345 <= event.pos[1] <= 395:
+                    if sound_effects_level < 1:
+                        sound_effects_level += 0.1
         keys = pygame.key.get_pressed()
         if keys[pygame.K_ESCAPE]:
             if in_game:
@@ -240,6 +262,10 @@ def lose_screen():
     screen.blit(buttons['previous_btn'], (210, 490))
     screen.blit(buttons['home_btn'], (550, 490))
     screen.blit(fon, (0, 0))
+    # включаем музыку поражения
+    pygame.mixer.music.pause()
+    lose_sound.set_volume(music_level)
+    lose_sound.play()
     # меняем координаты игрока на дефолтные
     x_coord = 100
     y_coord = 150
@@ -252,10 +278,21 @@ def lose_screen():
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 # При нажатии кнокпки повтор, уровень загрузится заново
                 if 210 <= event.pos[0] <= 260 and 490 <= event.pos[1] <= 540:
+                    # проигрываем звук нажатия кнопки
+                    menu_up.set_volume(sound_effects_level)
+                    menu_up.play()
+                    # продолжаем играть музыку
+                    lose_sound.stop()
+                    pygame.mixer.music.unpause()
                     main_screen()
                     return
                 # При нажатии кнопки домой, появиться стартовый экран
                 elif 550 <= event.pos[0] <= 600 and 490 <= event.pos[1] <= 540:
+                    # проигрываем звук нажатия кнопки
+                    menu_up.set_volume(sound_effects_level)
+                    menu_up.play()
+                    # продолжаем играть музыку
+                    pygame.mixer.music.unpause()
                     start_screen()
                     return
         pygame.display.flip()
@@ -269,16 +306,26 @@ def win_screen():
     screen.blit(buttons['next_btn'], (515, 430))
     screen.blit(buttons['previous_btn'], (215, 430))
     screen.blit(fon, (0, 0))
+    # включаем музыку победы
+    pygame.mixer.music.pause()
+    win_sound.set_volume(music_level)
+    win_sound.play()
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                # При нажатии кнокпки повтор, уровень загрузится заново
+                # При нажатии кнопки повтор, уровень загрузится заново
                 if 215 <= event.pos[0] <= 265 and 430 <= event.pos[1] <= 480:
+                    # проигрываем звук нажатия кнопки
+                    menu_up.set_volume(sound_effects_level)
+                    menu_up.play()
+                    # продолжаем играть музыку
+                    win_sound.stop()
+                    pygame.mixer.music.unpause()
                     main_screen()
                     return
-                # При нажатии кнопки далее загрузится слелующий уровень
+                # При нажатии кнопки далее загрузится следующий уровень
                 # elif 490 <= event.pos[0] <= 540 and 490 <= event.pos[1] <= 540:
                 # next_level()
         pygame.display.flip()
@@ -357,9 +404,8 @@ class Player(pygame.sprite.Sprite):
             win_screen()
         # если игрок провалится, то также появляется экран поражения
         if y_coord > 600:
-            pass
-            # self.kill()
-            # lose_screen()
+            self.kill()
+            lose_screen()
         # игрок падает, не столкнётся с блоком
         if pygame.sprite.spritecollideany(self, tiles_group) is None and not jump:
             is_flying = True
@@ -421,7 +467,7 @@ def camera_configure(camera, obj):
     return pygame.Rect(width_of_obj, height_of_obj, w, h)
 
 
-# фцнкция генерации уровня с .txt файла
+# функция генерации уровня с .txt файла
 def generate_level():
     # инициализируем переменные
     global x_coord, y_coord
@@ -486,14 +532,21 @@ def main_screen():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 # проверяем, куда нажал пользователь
                 if 750 <= event.pos[0] <= 800 and 0 <= event.pos[1] <= 50:
+                    # проигрываем звук нажатия кнопки
+                    menu_up.set_volume(sound_effects_level)
+                    menu_up.play()
                     player.kill()
                     settings_screen(True)
                 elif 0 <= event.pos[0] <= 50 and 0 <= event.pos[1] <= 50:
+                    # проигрываем звук нажатия кнопки
+                    menu_up.set_volume(sound_effects_level)
+                    menu_up.play()
                     player.kill()
                     start_screen()
         keys = pygame.key.get_pressed()
         if keys[pygame.K_ESCAPE]:
             # выход в настройки клавишей ESCAPE
+            player.kill()
             settings_screen(True)
         if keys[pygame.K_LEFT] and x_coord > 5:
             x_coord -= speed
@@ -524,6 +577,8 @@ def main_screen():
             if jump_height < 0:
                 if pygame.sprite.spritecollideany(player, tiles_group):
                     # игрок столкнулся с другим спрайтом
+                    drop.set_volume(sound_effects_level)
+                    drop.play()
                     y_coord = pygame.sprite.spritecollideany(player, tiles_group).rect[1] - width_of_player - 6
                     jump = False
                     jump_height = 10
@@ -535,6 +590,8 @@ def main_screen():
             if pygame.sprite.spritecollideany(player, tiles_group):
                 # если столкнулся с землёй, то оставляем его там
                 y_coord = pygame.sprite.spritecollideany(player, tiles_group).rect[1] - width_of_player - 6
+                drop.set_volume(sound_effects_level)
+                drop.play()
                 jump_height = 10
                 is_flying = False
             else:
@@ -557,4 +614,4 @@ def main_screen():
 
 # открываем игру с главного экрана
 if __name__ == '__main__':
-    main_screen()
+    start_screen()
