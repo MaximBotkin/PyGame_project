@@ -310,6 +310,13 @@ def win_screen(level_num):
     # увеличиваем уровень
     level_number = level_num
     level_number += 1
+    all_sprites.empty()
+    tiles_group.empty()
+    thorns_group.empty()
+    water_group.empty()
+    player_group.empty()
+    buttons_group.empty()
+    finish_group.empty()
 
     # загружаем фон
     fon = pygame.transform.scale(load_image("victory.png"), (width, height))
