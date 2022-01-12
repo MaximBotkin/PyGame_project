@@ -1,7 +1,12 @@
 import os
 import sys
-
 import pygame
+import PyQt5
+import PyQt5.QtWidgets as QtWidgets
+from PyQt5.QtWidgets import QApplication, QMessageBox
+from PyQt5 import uic
+import sqlite3
+import hashlib
 
 # инициализируем pygame
 pygame.init()
@@ -29,7 +34,7 @@ sound_effects_level = 0.5
 
 # играем непрерывную музыку
 pygame.mixer.music.load('data/sound_effects/music.wav')
-pygame.mixer.music.set_volume(music_level)
+pygame.mixer.music.set_volume(0)
 pygame.mixer.music.play(loops=-1)
 
 # звук падения
@@ -65,7 +70,7 @@ def load_image(name, colorkey=None):
 
 
 # функция загрузки карты уровня
-def load_level(filename="level.txt"):
+def load_level(filename="level1.txt"):
     # передаем имя файла
     filename = "levels/" + filename
     # открываем файл
@@ -74,6 +79,7 @@ def load_level(filename="level.txt"):
             level = [line.strip() for line in map_file]
     except:
         print(f'No file with name "{filename}" in folder "levels"')
+        sys.exit()
     # загружаем список карты
     finish_map = []
     for st in level:
@@ -83,8 +89,6 @@ def load_level(filename="level.txt"):
         finish_map.append(a)
     return finish_map
 
-
-load_level()
 
 # передаем изображения всех кнопок в словарь
 buttons = {'home_btn': load_image("home_button.png"), 'minus_btn': load_image("minus.png"),
@@ -113,8 +117,6 @@ fly = [pygame.image.load('data/sprites/fly_1.png')]
 background = pygame.image.load('data/main_fon.png')
 defoltplace = pygame.image.load('data/sprites/idle.png')
 
-# загружаем карту
-level_map = load_level()
 # загружаем изображения самой игры
 tile_images = {
     'thorn': load_image("thorns.png"),
@@ -150,7 +152,9 @@ def terminate():
 
 
 # стартовый экран, из которого можно перейти в настройки и саму игру
-def start_screen():
+def start_screen(level_numb):
+    level_number = level_numb
+
     # фон стартового экрана
     fon = pygame.transform.scale(load_image('start_fon.png'), (width, height))
     screen.blit(fon, (0, 0))
@@ -158,6 +162,8 @@ def start_screen():
     # выводим кнопки настроек и играть на экран
     screen.blit(buttons['settings_btn'], (750, 0))
     screen.blit(buttons['play_btn'], (170, 240))
+
+    pygame.mixer.music.set_volume(music_level)
 
     # цикл стартового экрана
     while True:
@@ -174,22 +180,22 @@ def start_screen():
                     # проигрываем звук нажатия кнопки
                     menu_up.set_volume(sound_effects_level)
                     menu_up.play()
-                    settings_screen()
+                    settings_screen(level_numb)
                 elif 130 <= event.pos[0] <= 630 and 200 <= event.pos[1] <= 575:
                     # проигрываем звук нажатия кнопки
                     menu_up.set_volume(sound_effects_level)
                     menu_up.play()
-                    main_screen()
+                    main_screen(level_number)
         keys = pygame.key.get_pressed()
         if keys[pygame.K_ESCAPE]:
-            settings_screen()
+            settings_screen(level_numb)
         # обновляем экран
         pygame.display.flip()
         clock.tick(FPS)
 
 
 # экран настроек, в котором можно изменить громкость музыки и звуковых эффектов
-def settings_screen(in_game=False):
+def settings_screen(level_num, in_game=False):
     # глобализируем переменные
     global music_level, sound_effects_level
 
@@ -220,13 +226,13 @@ def settings_screen(in_game=False):
                     # проигрываем звук нажатия кнопки
                     menu_up.set_volume(sound_effects_level)
                     menu_up.play()
-                    start_screen()
+                    start_screen(level_num)
                 if in_game:
                     if 0 <= event.pos[0] <= 50 and 0 <= event.pos[1] <= 50:
                         # проигрываем звук нажатия кнопки
                         menu_up.set_volume(sound_effects_level)
                         menu_up.play()
-                        main_screen()
+                        main_screen(level_num)
                 # если это одна из кнопок изменения звука,
                 # то изменяем переменные music_level или sound_effects_level соответственно нажатой кнопки
                 if 450 <= event.pos[0] <= 500 and 210 <= event.pos[1] <= 260:
@@ -246,16 +252,16 @@ def settings_screen(in_game=False):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_ESCAPE]:
             if in_game:
-                main_screen()
+                main_screen(level_num)
             else:
-                start_screen()
+                start_screen(level_num)
         # обновляем экран
         pygame.display.flip()
         clock.tick(FPS)
 
 
 # функция экрана поражения
-def lose_screen():
+def lose_screen(level_num):
     global x_coord, y_coord, jump, jump_height
     # загружаем фон
     fon = pygame.transform.scale(load_image("game_over.png"), (width, height))
@@ -284,7 +290,7 @@ def lose_screen():
                     # продолжаем играть музыку
                     lose_sound.stop()
                     pygame.mixer.music.unpause()
-                    main_screen()
+                    main_screen(level_num)
                     return
                 # При нажатии кнопки домой, появиться стартовый экран
                 elif 550 <= event.pos[0] <= 600 and 490 <= event.pos[1] <= 540:
@@ -293,14 +299,18 @@ def lose_screen():
                     menu_up.play()
                     # продолжаем играть музыку
                     pygame.mixer.music.unpause()
-                    start_screen()
+                    start_screen(level_num)
                     return
         pygame.display.flip()
         clock.tick(FPS)
 
 
 # функция экрана победы
-def win_screen():
+def win_screen(level_num):
+    # увеличиваем уровень
+    level_number = level_num
+    level_number += 1
+
     # загружаем фон
     fon = pygame.transform.scale(load_image("victory.png"), (width, height))
     screen.blit(buttons['next_btn'], (515, 430))
@@ -323,11 +333,11 @@ def win_screen():
                     # продолжаем играть музыку
                     win_sound.stop()
                     pygame.mixer.music.unpause()
-                    main_screen()
+                    main_screen(level_number)
                     return
                 # При нажатии кнопки далее загрузится следующий уровень
-                # elif 490 <= event.pos[0] <= 540 and 490 <= event.pos[1] <= 540:
-                # next_level()
+                elif 515 <= event.pos[0] <= 565 and 430 <= event.pos[1] <= 480:
+                    main_screen(level_number)
         pygame.display.flip()
         clock.tick(FPS)
 
@@ -382,10 +392,11 @@ class Player(pygame.sprite.Sprite):
     global x_coord, y_coord
 
     # инициализируем
-    def __init__(self, x_coord, y_coord):
+    def __init__(self, x_coord, y_coord, level_num):
         super().__init__(player_group, all_sprites)
         self.image = defoltplace
         self.rect = self.image.get_rect().move(x_coord, y_coord)
+        self.level_num = level_num
 
     # функция отвечающая за передвижения персонажа
     def update(self, x_coord, y_coord, jump):
@@ -393,19 +404,19 @@ class Player(pygame.sprite.Sprite):
         # если игрок сталкивается с шипами, то появляется экран поражения
         if pygame.sprite.spritecollideany(self, thorns_group):
             self.kill()
-            lose_screen()
+            lose_screen(self.level_num)
         # если игрок сталкивается с лавой, то появляется экран поражения
         if pygame.sprite.spritecollideany(self, water_group):
             self.kill()
-            lose_screen()
+            lose_screen(self.level_num)
         # если игрок сталкивается со звездой, то появляется экран победы
         if pygame.sprite.spritecollideany(self, finish_group):
             self.kill()
-            win_screen()
+            win_screen(self.level_num)
         # если игрок провалится, то также появляется экран поражения
         if y_coord > 600:
             self.kill()
-            lose_screen()
+            lose_screen(self.level_num)
         # игрок падает, не столкнётся с блоком
         if pygame.sprite.spritecollideany(self, tiles_group) is None and not jump:
             is_flying = True
@@ -468,11 +479,11 @@ def camera_configure(camera, obj):
 
 
 # функция генерации уровня с .txt файла
-def generate_level():
+def generate_level(finish_map):
     # инициализируем переменные
     global x_coord, y_coord
+
     # загружаем карту
-    finish_map = load_level()
     for y in range(len(finish_map)):
         for x in range(len(finish_map[y])):
             if finish_map[y][x] == '@':
@@ -491,7 +502,7 @@ def generate_level():
 
 
 # главный экран
-def main_screen():
+def main_screen(level_num):
     # глобализируем переменные
     global jump, jump_height, x_coord, y_coord, left, right, animation, is_flying
 
@@ -513,15 +524,18 @@ def main_screen():
     left = False
     right = False
     animation = 0
+    level_number = level_num
 
     # выводим на экран игрока
-    player = Player(x_coord, y_coord)
+    player = Player(x_coord, y_coord, level_num)
 
     # инициализируем камеру
     camera = Camera(camera_configure, 1600, 600)
 
     # выводим спрайты
-    generate_level()
+    level_name = f'level{level_number}.txt'
+    finish_map = load_level(level_name)
+    generate_level(finish_map)
 
     # цикл главного экрана
     while True:
@@ -536,18 +550,18 @@ def main_screen():
                     menu_up.set_volume(sound_effects_level)
                     menu_up.play()
                     player.kill()
-                    settings_screen(True)
+                    settings_screen(level_number, True)
                 elif 0 <= event.pos[0] <= 50 and 0 <= event.pos[1] <= 50:
                     # проигрываем звук нажатия кнопки
                     menu_up.set_volume(sound_effects_level)
                     menu_up.play()
                     player.kill()
-                    start_screen()
+                    start_screen(level_number)
         keys = pygame.key.get_pressed()
         if keys[pygame.K_ESCAPE]:
             # выход в настройки клавишей ESCAPE
             player.kill()
-            settings_screen(True)
+            settings_screen(level_number, True)
         if keys[pygame.K_LEFT] and x_coord > 5:
             x_coord -= speed
             left = True
@@ -612,6 +626,98 @@ def main_screen():
         clock.tick(FPS)
 
 
-# открываем игру с главного экрана
+# Окно входа в аккаунт
+class Login_window(PyQt5.QtWidgets.QDialog):
+    global level_number
+
+    def __init__(self):
+        super().__init__()
+        self.widget = None
+        uic.loadUi('login_qt.ui', self)
+        self.setWindowTitle('Вход/регистрация в аккаунт')
+        self.setFixedSize(self.size())
+
+        # Скрытие строки с паролем
+        self.password.setEchoMode(2)
+
+        # Обработка кнопок входа и регистрации
+        self.login_button.clicked.connect(self.login_in)
+        self.sign_up_button.clicked.connect(self.sign_up)
+
+    # Функция открытия главного окна
+    def game_starting(self, level_num):
+        Login_window.close(self)
+        level_number = level_num[0][0]
+        start_screen(level_number)
+
+    # Функция входа в аккаунт
+    def login_in(self):
+        # Подключение к базе данных users.db
+        con = sqlite3.connect("users.db")
+        cursor = con.cursor()
+        # Считывание логина и пароля
+        login = self.login.text()
+        password = self.password.text()
+        # Проверка введены ли логин и пароль
+        if not login or not password:
+            QMessageBox.critical(self, 'Ошибка!', 'Вы заполнили не все поля!', QMessageBox.Ok)
+        else:
+            # Хеширование пароля с помощью библиотеки hashlib
+            password = bytes(password, 'utf-8')
+            hash_password = hashlib.sha1(password).hexdigest()
+            # Ищем пользователя в таблице users в базе данных
+            result_of_execute = cursor.execute('SELECT login, password FROM user WHERE login = ? AND password = ?',
+                                               (login, hash_password))
+            # Проверка - найден ли пользователь
+            if result_of_execute.fetchall():
+                # Если да, выводим стартовый экран
+                user_id = cursor.execute('SELECT id FROM user WHERE login = ? AND password = ?',
+                                         (login, hash_password)).fetchall()
+                level_num = cursor.execute(f'SELECT level_number FROM sums WHERE user_id = {user_id[0][0]}').fetchall()
+                # Открываем стартовый экран и передаём текущий уровень
+                self.game_starting(level_num)
+            else:
+                # В противном случае выносим окно с ошибкой
+                return QMessageBox.information(self, 'Внимание!', 'Неправильное имя пользователя или пароль')
+
+    # Функция регистрации в аккаунт
+    def sign_up(self):
+        # Подключение к базе данных data.db
+        con = sqlite3.connect("users.db")
+        cursor = con.cursor()
+        # Считывание логина и пароля
+        login = self.login.text()
+        password = self.password.text()
+        # Проверка введены ли логин и пароль
+        if not login or not password:
+            QMessageBox.critical(self, 'Ошибка!', 'Вы заполнили не все поля!', QMessageBox.Ok)
+        else:
+            # Хеширование пароля с помощью библиотеки hashlib
+            password = bytes(password, 'utf-8')
+            hash_password = hashlib.sha1(password).hexdigest()
+            # Проверяем нет ли пользователя в базе данных
+            if_user_exist = cursor.execute(f'SELECT * FROM user WHERE login = {login}')
+            if if_user_exist.fetchall():
+                # Если пользователь с таким логином уже существует, то выносим окно с ошибкой
+                QMessageBox.critical(self, 'Внимание!', 'Пользователь с таким логином уже зарегистрирован.',
+                                     QMessageBox.Ok)
+            else:
+                # Если пользователя, нет заносим его в базу данных
+                cursor.execute(f'INSERT INTO user(login,password) VALUES("{login}", "{hash_password}")')
+                # Сохраняем таблицу
+                con.commit()
+                user_id = cursor.execute("SELECT id FROM user WHERE login = ? AND password = ?",
+                                         (login, hash_password)).fetchall()
+                cursor.execute(f'INSERT INTO sums(user_id) VALUES({user_id[0][0]})')
+                # выводим стартовый экран
+                # Сохраняем таблицу
+                con.commit()
+                self.game_starting(1)
+
+
+# Запуск программы
 if __name__ == '__main__':
-    start_screen()
+    app = QApplication(sys.argv)
+    pass_dialog = Login_window()
+    pass_dialog.show()
+    sys.exit(app.exec_())
