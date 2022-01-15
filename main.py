@@ -8,6 +8,7 @@ from PyQt5 import uic
 import sqlite3
 import hashlib
 
+
 # инициализируем pygame
 pygame.init()
 # устанавливаем расширение 800 на 600
@@ -443,10 +444,6 @@ class Player(pygame.sprite.Sprite):
         # игрок падает, не столкнётся с блоком
         if pygame.sprite.spritecollideany(self, tiles_group) is None and not jump:
             is_flying = True
-        if pygame.sprite.spritecollideany(self, tiles_group):
-            rect = pygame.sprite.spritecollideany(self, tiles_group).rect
-            if rect[0] - x_coord >= 40:
-                is_flying = True
         # игрок летит с анимацией падения
         if is_flying:
             self.image = fly[0]
@@ -578,7 +575,7 @@ def main_screen(level_num, user_id):
                     menu_up.set_volume(sound_effects_level)
                     menu_up.play()
                     player.kill()
-                    settings_screen(level_number, True)
+                    settings_screen(level_number, user_id, True)
                 elif 0 <= event.pos[0] <= 50 and 0 <= event.pos[1] <= 50:
                     # проигрываем звук нажатия кнопки
                     menu_up.set_volume(sound_effects_level)
@@ -589,7 +586,7 @@ def main_screen(level_num, user_id):
         if keys[pygame.K_ESCAPE]:
             # выход в настройки клавишей ESCAPE
             player.kill()
-            settings_screen(level_number, True)
+            settings_screen(level_number, user_id, True)
         if keys[pygame.K_LEFT] and x_coord > 5:
             x_coord -= speed
             left = True
@@ -675,7 +672,10 @@ class Login_window(PyQt5.QtWidgets.QDialog):
     # Функция открытия главного окна
     def game_starting(self, level_num, user_id):
         Login_window.close(self)
-        level_number = level_num[0][0]
+        if type(level_num) == int:
+            level_number = int(level_num)
+        else:
+            level_number = level_num[0][0]
         start_screen(level_number, user_id)
 
     # Функция входа в аккаунт
@@ -724,7 +724,7 @@ class Login_window(PyQt5.QtWidgets.QDialog):
             password = bytes(password, 'utf-8')
             hash_password = hashlib.sha1(password).hexdigest()
             # Проверяем нет ли пользователя в базе данных
-            if_user_exist = cursor.execute(f'SELECT * FROM user WHERE login = {login}')
+            if_user_exist = cursor.execute(f'SELECT * FROM user WHERE login = "{login}"')
             if if_user_exist.fetchall():
                 # Если пользователь с таким логином уже существует, то выносим окно с ошибкой
                 QMessageBox.critical(self, 'Внимание!', 'Пользователь с таким логином уже зарегистрирован.',
