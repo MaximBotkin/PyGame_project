@@ -8,7 +8,6 @@ from PyQt5 import uic
 import sqlite3
 import hashlib
 
-
 # инициализируем pygame
 pygame.init()
 # устанавливаем расширение 800 на 600
@@ -299,6 +298,7 @@ def lose_screen(level_num, user_id):
                     menu_up.set_volume(sound_effects_level)
                     menu_up.play()
                     # продолжаем играть музыку
+                    lose_sound.stop()
                     pygame.mixer.music.unpause()
                     start_screen(level_num, user_id)
                     return
@@ -359,6 +359,12 @@ def win_screen(level_num, user_id):
                     return
                 # При нажатии кнопки далее загрузится следующий уровень
                 elif 515 <= event.pos[0] <= 565 and 430 <= event.pos[1] <= 480:
+                    # проигрываем звук нажатия кнопки
+                    menu_up.set_volume(sound_effects_level)
+                    menu_up.play()
+                    # продолжаем играть музыку
+                    win_sound.stop()
+                    pygame.mixer.music.unpause()
                     main_screen(level_number, user_id)
         pygame.display.flip()
         clock.tick(FPS)
